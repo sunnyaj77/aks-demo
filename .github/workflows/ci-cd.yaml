@@ -1,0 +1,61 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"          # only run when the app code actually changes —
+                           # a charts/ or infra/ commit shouldn't rebuild the image
+
+permissions:
+  id-token: write   # OIDC token for ACR auth, same pattern as infra-apply.yaml
+  contents: write    # needed to commit the bumped image tag back to the repo
+
+env:
+  ACR_NAME: abhiacr07
+  IMAGE_NAME: nextjs-app
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same federated-identity pattern as infra-apply.yaml — no stored
+      # ACR password, the workflow authenticates as itself via OIDC.
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and push image
+        run: |
+          IMAGE_TAG="${{ github.sha }}"
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:$IMAGE_TAG .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+
+      # This is the step values.yaml's comment was pointing at:
+      # "CI will bump this to the real git SHA once Pipeline B exists."
+      # Flux never talks to ACR or Docker directly — it only ever reacts
+      # to commits in this repo. So the way a freshly-built image actually
+      # reaches the cluster is: CI writes the new tag into values.yaml,
+      # commits it, and Flux's GitRepository source picks up that commit
+      # on its next poll and reconciles the HelmRelease.
+      - name: Bump image tag in values.yaml
+        working-directory: .
+        run: |
+          sed -i "s/tag:.*/tag: \"${IMAGE_TAG}\"/" charts/nextjs-app/values.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/nextjs-app/values.yaml
+          git commit -m "ci: bump nextjs-app image tag to ${IMAGE_TAG}"
+          git push

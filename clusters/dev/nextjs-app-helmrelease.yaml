@@ -1,0 +1,57 @@
+# This is the Flux "pointer" mentioned in your repo diagram.
+# It doesn't contain any pod/container logic itself — it just tells
+# FluxCD: "watch charts/nextjs-app in this same repo, and keep the
+# cluster's live state matching whatever's on the target branch."
+#
+# It assumes `flux bootstrap` has already created a GitRepository
+# named "flux-system" in the "flux-system" namespace that points at
+# THIS repo (bootstrap does this for you automatically — see the
+# command below). This file just references that existing source
+# by name; it does not create it.
+
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nextjs-app
+  namespace: nextjs-app
+spec:
+  # How often Flux re-checks this HelmRelease against the chart source
+  # and reconciles drift (e.g. someone manually kubectl-edited a Deployment).
+  interval: 5m
+
+  chart:
+    spec:
+      # In-repo chart path, NOT a Helm repository chart name+version.
+      # Because this points at a path rather than a published chart,
+      # Flux re-renders it whenever the GitRepository source updates —
+      # i.e. whenever you push a commit that touches charts/nextjs-app/.
+      chart: ./charts/nextjs-app
+      sourceRef:
+        kind: GitRepository
+        name: flux-system
+        namespace: flux-system
+      # How often Flux checks the chart source itself for changes.
+      interval: 5m
+
+  install:
+    # Creates the "nextjs-app" namespace on first install if it doesn't
+    # exist yet — you destroyed the cluster via terraform destroy, so
+    # this matters: there's nothing pre-provisioned to deploy into.
+    createNamespace: true
+    remediation:
+      retries: 3
+
+  upgrade:
+    remediation:
+      retries: 3
+
+  # Left empty on purpose: this inherits every default straight from
+  # charts/nextjs-app/values.yaml (autoscaling on, ingress off, etc.
+  # — everything we already walked through). Override only what needs
+  # to differ for this specific environment (dev). Example, once
+  # Pipeline B exists and needs to pin a real image tag:
+  #
+  # values:
+  #   image:
+  #     tag: "<git-sha>"
+  values: {}
