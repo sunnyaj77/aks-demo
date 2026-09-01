@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Guard — stop unless the typed name matches
         run: |
-          if [ "${{ inputs.confirm_cluster_name }}" != "aks-nextjs-demo" ]; then
+          if [ "${{ github.event.inputs.confirm_cluster_name }}" != "aks-nextjs-demo" ]; then
             echo "Typed name did not match 'aks-nextjs-demo' — aborting."
             exit 1
           fi
