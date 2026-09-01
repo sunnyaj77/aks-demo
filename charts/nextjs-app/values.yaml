@@ -1,0 +1,53 @@
+replicaCount: 2
+
+image:
+  repository: abhiacr07.azurecr.io/nextjs-app
+  tag: latest        # CI will bump this to the real git SHA once Pipeline B exists
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: nextjs-app
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+# No ingress controller in the cluster yet — turn this on once
+# Stage 2 installs ingress-nginx.
+ingress:
+  enabled: false
+  className: nginx
+  host: nextjs-demo.example.com
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+probes:
+  path: /api/health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# No Key Vault / workload identity in this simplified infra —
+# leave disabled until that's actually built.
+secretProvider:
+  enabled: false
