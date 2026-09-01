@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: abhiacr07.azurecr.io/nextjs-app
-  tag: latest        # CI will bump this to the real git SHA once Pipeline B exists
+  tag: "07f98fd8353862b443e4da6faef94cbf67b6af4f"
   pullPolicy: IfNotPresent
 
 serviceAccount:
