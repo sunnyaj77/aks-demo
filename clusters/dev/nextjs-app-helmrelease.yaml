@@ -9,6 +9,17 @@
 # command below). This file just references that existing source
 # by name; it does not create it.
 
+# Explicit Namespace object, applied by kustomize-controller BEFORE the
+# HelmRelease below. This is required: the HelmRelease's own
+# metadata.namespace (nextjs-app) has to exist for kustomize-controller
+# to apply that object at all — install.createNamespace further down
+# only creates the namespace for the eventual Helm install, which never
+# gets reached if the HelmRelease itself can't be applied first.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nextjs-app
+---
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
