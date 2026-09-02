@@ -43,6 +43,16 @@ spec:
         namespace: flux-system
       # How often Flux checks the chart source itself for changes.
       interval: 5m
+      # IMPORTANT: default is "ChartVersion", which only rebuilds the
+      # chart when Chart.yaml's `version` field changes — NOT simply
+      # whenever file contents change. That's exactly what bit us
+      # yesterday: values.yaml changed, Chart.yaml's version didn't,
+      # so Flux kept serving a stale cached chart build. "Revision"
+      # instead rebuilds on every new git commit touching this path —
+      # correct behavior for a chart under active development, and it
+      # means ci-cd.yaml doesn't need to remember to bump Chart.yaml
+      # every time it bumps the image tag.
+      reconcileStrategy: Revision
 
   install:
     # Creates the "nextjs-app" namespace on first install if it doesn't
