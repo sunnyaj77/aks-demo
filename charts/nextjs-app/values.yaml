@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: abhiacr07.azurecr.io/nextjs-app
-  tag: "07f98fd8353862b443e4da6faef94cbf67b6af4f"
+  tag: "0bfe6da8e29937cfaba8764658b517e79c6bb5df"
   pullPolicy: IfNotPresent
 
 serviceAccount:
