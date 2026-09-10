@@ -1,0 +1,67 @@
+# Development Environment Values
+environment: dev
+
+replicaCount: 1
+
+image:
+  repository: abhiacr07.azurecr.io/nextjs-app
+  tag: "latest"  # CI will update this
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: nextjs-app-dev
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  host: nextjs-dev.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 80
+
+probes:
+  path: /api/health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+secretProvider:
+  enabled: false
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Environment-specific configs
+env:
+  - name: ENVIRONMENT
+    value: "development"
+  - name: LOG_LEVEL
+    value: "debug"
