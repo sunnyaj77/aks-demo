@@ -1,0 +1,84 @@
+# Production Environment Values
+environment: prod
+
+replicaCount: 3
+
+image:
+  repository: abhiacr07.azurecr.io/nextjs-app
+  tag: "latest"  # CI will update this
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: nextjs-app-prod
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  host: nextjs-prod.example.com
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+probes:
+  path: /api/health
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+secretProvider:
+  enabled: true
+
+nodeSelector:
+  workload: production
+
+tolerations:
+  - key: "production"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - nextjs-app
+          topologyKey: kubernetes.io/hostname
+
+# Environment-specific configs
+env:
+  - name: ENVIRONMENT
+    value: "production"
+  - name: LOG_LEVEL
+    value: "warn"
