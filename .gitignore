@@ -1,0 +1,28 @@
+# Terraform
+infra/.terraform/
+infra/.terraform.lock.hcl
+infra/*.tfstate
+infra/*.tfstate.*
+infra/tfplan
+infra/crash.log
+infra/crash.*.log
+
+# Any tfvars file whose name signals it holds local/secret overrides —
+# see the note at the bottom of infra/terraform.tfvars. infra/terraform.tfvars
+# itself IS committed (it only holds non-secret values) — this pattern is
+# just for anything layered on top of it locally.
+infra/*.auto.tfvars
+infra/terraform.tfvars.local
+
+# Node / Next.js
+app/node_modules/
+app/.next/
+
+# Python
+backend/__pycache__/
+backend/*.pyc
+backend/.venv/
+
+# Editor/OS noise
+.DS_Store
+*.swp

@@ -1,25 +1,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nextjs-app
+  name: backend-api
   labels:
-    app: nextjs-app
+    app: backend-api
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      app: nextjs-app
+      app: backend-api
   template:
     metadata:
       labels:
-        app: nextjs-app
-        azure.workload.identity/use: "true"   # inert for now — no workload identity webhook installed yet
+        app: backend-api
+        azure.workload.identity/use: "true"
     spec:
-      serviceAccountName: nextjs-app
+      serviceAccountName: backend-api
       containers:
-        - name: nextjs-app
+        - name: backend-api
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
@@ -28,17 +28,6 @@ spec:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
-          env:
-            - name: IMAGE_TAG
-              value: {{ .Values.image.tag | quote }}
-            # Read by pages/api/login.js and pages/api/me.js — the only two
-            # routes in this app that ever call out to APIM.
-            - name: APIM_GATEWAY_URL
-              value: {{ .Values.apim.gatewayUrl | quote }}
-            {{- if .Values.secretProvider.enabled }}
-            - name: APIM_SUBSCRIPTION_KEY_PATH
-              value: /mnt/secrets-store/apim-subscription-key
-            {{- end }}
           livenessProbe:
             httpGet:
               path: {{ .Values.probes.path }}
@@ -54,6 +43,16 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.secretProvider.enabled }}
+          # main.py reads these as files first, falling back to a plain env
+          # var — see backend/main.py's _read_secret(). Paths here must
+          # match secretproviderclass.yaml's objectName list.
+          env:
+            - name: DEMO_PASSWORD_PATH
+              value: /mnt/secrets-store/demo-password
+            - name: DATABASE_URL_PATH
+              value: /mnt/secrets-store/database-url
+            - name: REDIS_URL_PATH
+              value: /mnt/secrets-store/redis-url
           volumeMounts:
             - name: secrets-store
               mountPath: /mnt/secrets-store
@@ -66,5 +65,5 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: nextjs-app-secrets
+              secretProviderClass: backend-api-secrets
       {{- end }}

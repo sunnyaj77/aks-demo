@@ -4,8 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "app/**" # only run when the app code actually changes —
-                           # a charts/ or infra/ commit shouldn't rebuild the image
+      - "app/**"
+      - "backend/**" # backend/** added alongside the new FastAPI service —
+                       # without this, backend/ commits never rebuild an image
   workflow_dispatch: {}
 
 permissions:
@@ -14,10 +15,32 @@ permissions:
 
 env:
   ACR_NAME: abhiacr07
-  IMAGE_NAME: nextjs-app
 
 jobs:
-  build-and-push:
+  # Runs once, tells the two build jobs below whether *their* service's
+  # code actually changed — so pushing a backend-only commit doesn't waste
+  # time rebuilding and repushing an unchanged frontend image, and vice
+  # versa. Same "only run when the app code actually changes" intent as
+  # before, just extended to two services instead of one.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'app/**'
+            backend:
+              - 'backend/**'
+
+  build-and-push-app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -40,8 +63,8 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE_TAG="${{ github.sha }}"
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:$IMAGE_TAG .
-          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:$IMAGE_TAG
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/nextjs-app:$IMAGE_TAG .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/nextjs-app:$IMAGE_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
 
       # This is the step values.yaml's comment was pointing at:
@@ -51,6 +74,12 @@ jobs:
       # reaches the cluster is: CI writes the new tag into values.yaml,
       # commits it, and Flux's GitRepository source picks up that commit
       # on its next poll and reconciles the HelmRelease.
+      #
+      # Still true for the frontend today. Once the self-hosted runner +
+      # direct `helm upgrade` step lands (see the plan's execution order —
+      # that's a separate, later change gated on the runner VM actually
+      # being registered), this commit-and-wait-for-Flux handoff goes away
+      # in favor of the runner deploying directly.
       - name: Bump image tag in values.yaml
         working-directory: .
         run: |
@@ -59,4 +88,48 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add charts/nextjs-app/values.yaml
           git commit -m "ci: bump nextjs-app image tag to ${IMAGE_TAG}"
+          git pull --rebase
+          git push
+
+  build-and-push-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Build and push image
+        run: |
+          IMAGE_TAG="${{ github.sha }}"
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/backend-api:$IMAGE_TAG .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/backend-api:$IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+
+      # Same Flux-handoff pattern as the frontend job above, pointed at
+      # charts/backend-api/values.yaml instead — this is the piece that
+      # was actually missing before: the backend chart existed
+      # (charts/backend-api/) but nothing ever bumped its image tag past
+      # the "replace-me" placeholder.
+      - name: Bump image tag in values.yaml
+        working-directory: .
+        run: |
+          sed -i "s/tag:.*/tag: \"${IMAGE_TAG}\"/" charts/backend-api/values.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add charts/backend-api/values.yaml
+          git commit -m "ci: bump backend-api image tag to ${IMAGE_TAG}"
+          git pull --rebase
           git push
