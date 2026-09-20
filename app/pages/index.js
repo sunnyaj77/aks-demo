@@ -11,6 +11,10 @@ export default function Home({ podName, imageTag, region }) {
       <p>
         Health check: <code>/api/health</code>
       </p>
+      <p>
+        Sample routes that exercise the private architecture end to end:{' '}
+        <a href="/login">/login</a> · <a href="/dashboard">/dashboard</a>
+      </p>
     </main>
   );
 }

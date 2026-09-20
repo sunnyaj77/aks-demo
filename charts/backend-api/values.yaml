@@ -1,0 +1,59 @@
+replicaCount: 2
+
+image:
+  repository: abhiacr07.azurecr.io/backend-api
+  tag: "replace-me"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: backend-api
+  # Same UAMI as the frontend, or its own — either works, see the plan's
+  # identity section. Leave blank until Terraform has created it.
+  azureClientId: ""
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+# type: LoadBalancer + the internal annotation is what makes this APIM's
+# private backend target — Kubernetes still allocates this Service a
+# ClusterIP too, so anything else inside the cluster could reach it the
+# same way, even though APIM is the only thing meant to.
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 70
+
+probes:
+  path: /health
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# Off by default so this chart also installs cleanly before Key Vault
+# exists — same pattern as charts/nextjs-app. Flip on once Terraform has
+# created the Key Vault + these secrets (demo-password, database-url,
+# redis-url) and the UAMI has Key Vault Secrets User on it.
+secretProvider:
+  enabled: false
+  keyvaultName: ""
+  tenantId: ""

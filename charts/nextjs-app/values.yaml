@@ -47,6 +47,13 @@ probes:
   initialDelaySeconds: 5
   periodSeconds: 10
 
+# APIM's internal gateway hostname — see pages/api/login.js and
+# pages/api/me.js, the only two places this app calls out to the backend.
+# Leave blank until APIM is actually provisioned; those routes fail with a
+# clear "not configured" error rather than a confusing crash if it's unset.
+apim:
+  gatewayUrl: ""
+
 # No Key Vault / workload identity in this simplified infra —
 # leave disabled until that's actually built.
 secretProvider:

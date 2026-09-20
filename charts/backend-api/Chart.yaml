@@ -1,0 +1,6 @@
+apiVersion: v2
+name: backend-api
+description: Demo Python (FastAPI) backend deployed to AKS, fronted by APIM
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
