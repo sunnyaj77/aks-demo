@@ -36,7 +36,7 @@ resource "azurerm_subnet" "private_endpoints" {
 
   # Required for a subnet that's going to host Private Endpoints — Azure
   # blocks PE creation in a subnet where these policies are still enabled.
-  private_endpoint_network_policies_enabled = false
+  private_endpoint_network_policies = "Disabled"
 }
 
 # Postgres Flexible Server's "VNet-integrated (private access)" mode is a
