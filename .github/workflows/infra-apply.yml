@@ -12,6 +12,15 @@ env:
   ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
   ARM_USE_OIDC:        "true"
   ARM_ACCESS_KEY:      ${{ secrets.TFSTATE_ACCESS_KEY }}
+  # New with the private-networking/APIM/data-layer infra: these four
+  # variables have no default in infra/variables.tf on purpose (personal
+  # or secret) and terraform plan/apply now fails without them — add all
+  # four as repo secrets (Settings -> Secrets and variables -> Actions)
+  # before running this workflow.
+  TF_VAR_apim_publisher_name:   ${{ secrets.APIM_PUBLISHER_NAME }}
+  TF_VAR_apim_publisher_email:  ${{ secrets.APIM_PUBLISHER_EMAIL }}
+  TF_VAR_runner_ssh_public_key: ${{ secrets.RUNNER_SSH_PUBLIC_KEY }}
+  TF_VAR_github_runner_pat:     ${{ secrets.RUNNER_REGISTRATION_PAT }}
 
 jobs:
   terraform:
