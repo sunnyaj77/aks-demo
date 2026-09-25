@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: abhiacr07.azurecr.io/backend-api
-  tag: "replace-me"
+  tag: "c53fd464f08997b94a6bb4d3543e036cbadf505e"
   pullPolicy: IfNotPresent
 
 serviceAccount:
