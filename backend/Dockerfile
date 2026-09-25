@@ -23,6 +23,10 @@ RUN addgroup --system --gid 1001 app \
 
 COPY --from=builder /opt/venv /opt/venv
 COPY main.py .
+COPY db.py .
+COPY models ./models
+COPY alembic.ini .
+COPY alembic ./alembic
 
 USER app
 EXPOSE 8000

@@ -1,5 +1,7 @@
+alembic==1.13.3
 fastapi==0.115.0
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
 psycopg2-binary==2.9.9
+SQLAlchemy==2.0.36
 redis==5.0.8
