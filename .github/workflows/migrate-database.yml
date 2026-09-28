@@ -8,7 +8,13 @@ on:
         type: string
         default: production
         description: GitHub environment to deploy to
-  workflow_dispatch: 
+  workflow_dispatch:
+    inputs:
+      environment_name:
+        required: false
+        type: string
+        default: production
+        description: GitHub environment to deploy to
 
 permissions:
   contents: read
@@ -25,7 +31,7 @@ jobs:
   migrate-database:
     name: Alembic migration
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment_name }}
+    environment: ${{ inputs.environment_name || 'production' }}
 
     steps:
       - name: Checkout repository
