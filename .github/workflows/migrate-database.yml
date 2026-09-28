@@ -28,8 +28,35 @@ env:
   ARM_ACCESS_KEY:      ${{ secrets.TFSTATE_ACCESS_KEY }}
 
 jobs:
+  prepare-pg-token:
+    name: Get PostgreSQL access token
+    runs-on: ubuntu-latest
+    outputs:
+      pgaccess_token: ${{ steps.fetch-token.outputs.pgaccess_token }}
+
+    steps:
+      - name: Login to Azure with UAMI
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get PostgreSQL Entra access token
+        id: fetch-token
+        shell: bash
+        run: |
+          token="$(az account get-access-token \
+            --resource-type oss-rdbms \
+            --query accessToken \
+            --output tsv)"
+
+          echo "::add-mask::$token"
+          echo "pgaccess_token=$token" >> "$GITHUB_OUTPUT"
+
   migrate-database:
     name: Alembic migration
+    needs: prepare-pg-token
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment_name || 'production' }}
 
@@ -49,35 +76,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Login to Azure with UAMI
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{  secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Get PostgreSQL Entra access token
-        shell: bash
-        run: |
-          token="$(az account get-access-token \
-            --resource-type oss-rdbms \
-            --query accessToken \
-            --output tsv)"
-
-          echo "PGACCESS_TOKEN=$token" >> "$GITHUB_ENV"
-
       - name: Show migration info
         run: |
           echo "PostgreSQL Server: ${{ vars.PGHOST }}"
           echo "Database: ${{ vars.PGDATABASE }}"
           echo "User: ${{ vars.PGUSER }}"
           echo "Port: ${{ vars.PGPORT }}"
-        env:
-          PGACCESS_TOKEN: ${{ env.PGACCESS_TOKEN }}
 
       - name: Run Alembic migrations
         working-directory: backend
         env:
+          PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
           PGHOST: ${{ vars.PGHOST }}
           PGPORT: "5432"
           PGDATABASE: ${{ vars.PGDATABASE }}
