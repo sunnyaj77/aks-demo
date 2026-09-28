@@ -122,7 +122,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           if [[ -z "${PGACCESS_TOKEN:-}" ]]; then
-            echo "PGACCESS_TOKEN was not set for migration step."
+            echo "::error::PGACCESS_TOKEN was not set for migration step."
             exit 1
           fi
 
