@@ -121,7 +121,7 @@ jobs:
           retries=10
           sleep_seconds=6
 
-          for attempt in $(seq 1 "$retries"); do
+          for ((attempt = 1; attempt <= retries; attempt++)); do
             echo "Checking migration connectivity (attempt $attempt/$retries)..."
             if python -c 'from sqlalchemy import create_engine, text; from db import get_database_url; engine = create_engine(get_database_url()); connection = engine.connect(); connection.execute(text("SELECT 1")); connection.close()'
             then
