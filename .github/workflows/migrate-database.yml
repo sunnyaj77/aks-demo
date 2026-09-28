@@ -28,13 +28,15 @@ env:
   ARM_ACCESS_KEY:      ${{ secrets.TFSTATE_ACCESS_KEY }}
 
 jobs:
-  prepare-pg-token:
-    name: Get PostgreSQL access token
+  migrate-database:
+    name: Alembic migration
     runs-on: ubuntu-latest
-    outputs:
-      pgaccess_token: ${{ steps.fetch-token.outputs.pgaccess_token }}
+    environment: ${{ inputs.environment_name || 'production' }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Login to Azure with UAMI
         uses: azure/login@v2
         with:
@@ -57,17 +59,7 @@ jobs:
           fi
 
           echo "::add-mask::$token"
-          echo "pgaccess_token=$token" >> "$GITHUB_OUTPUT"
-
-  migrate-database:
-    name: Alembic migration
-    needs: prepare-pg-token
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment_name || 'production' }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+          echo "pgaccess_token=$token" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -121,7 +113,7 @@ jobs:
       - name: Run Alembic migrations
         working-directory: backend
         env:
-          PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
+          PGACCESS_TOKEN: ${{ env.pgaccess_token }}
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           retries=10
