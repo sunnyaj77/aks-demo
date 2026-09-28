@@ -32,7 +32,11 @@ _ENTRA_CREDENTIALS = None
 
 def get_database_url() -> str:
     """Build a PostgreSQL connection URL."""
-    access_token = os.environ.get("PGACCESS_TOKEN")
+    # Strip whitespace so a blank/whitespace-only token (e.g. from a CI step
+    # that failed silently but still exported an env var) is treated as
+    # "not provided" instead of masking the real problem with a confusing
+    # downstream error.
+    access_token = os.environ.get("PGACCESS_TOKEN", "").strip()
 
     if access_token:
         return _build_entra_url(access_token, _resolve_entra_config(required=True))
@@ -180,7 +184,10 @@ def _build_password_url() -> str:
         raise RuntimeError(
             "No database configuration found. "
             "Set either DATABASE_URL or PGACCESS_TOKEN with PGHOST, PGUSER, "
-            "and PGDATABASE."
+            "and PGDATABASE. If running in CI, verify the job that fetches "
+            "PGACCESS_TOKEN (e.g. `az account get-access-token`) actually "
+            "produced a non-empty token - a silently failed token fetch will "
+            "land here with a blank PGACCESS_TOKEN."
         )
 
     return _normalize_database_url(database_url)
