@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: abhiacr07.azurecr.io/backend-api
-  tag: "628bef3e81f2e561fe056ff64514b8dd890010bb"
+  tag: "7d1cd08eaa7dde725d86b7908d64973ba52fe4ba"
   pullPolicy: IfNotPresent
 
 serviceAccount:
