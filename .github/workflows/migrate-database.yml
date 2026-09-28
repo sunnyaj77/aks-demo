@@ -118,18 +118,6 @@ jobs:
           echo "PGPORT=$resolved_pgport" >> "$GITHUB_ENV"
           echo "Resolved PostgreSQL variables."
 
-      - name: Verify PostgreSQL access token was provided
-        shell: bash
-        env:
-          PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
-        run: |
-          if [[ -z "${PGACCESS_TOKEN// }" ]]; then
-            echo "PGACCESS_TOKEN from the prepare-pg-token job is empty."
-            echo "The migrate-database job cannot authenticate to PostgreSQL without it."
-            exit 1
-          fi
-          echo "PGACCESS_TOKEN received."
-
       - name: Run Alembic migrations
         working-directory: backend
         env:
