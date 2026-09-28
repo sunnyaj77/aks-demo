@@ -8,7 +8,6 @@ on:
         type: string
         default: production
         description: GitHub environment to deploy to
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -35,7 +34,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
-        working-directory: backend
 
       - name: Login to Azure with UAMI
         uses: azure/login@v2
