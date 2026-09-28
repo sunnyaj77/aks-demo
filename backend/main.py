@@ -24,6 +24,7 @@ import time
 
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
+from db import check_database_connectivity
 
 app = FastAPI(title="aks-demo-backend")
 
@@ -63,15 +64,6 @@ def _redis_client():
     if not url:
         raise RuntimeError("no Redis connection info configured")
     return redis.from_url(url, socket_connect_timeout=3, socket_timeout=3)
-
-
-def _pg_connection():
-    import psycopg2  # imported lazily, same reasoning as above
-
-    dsn = _read_secret(DATABASE_URL_PATH, DATABASE_URL_FALLBACK)
-    if not dsn:
-        raise RuntimeError("no Postgres connection info configured")
-    return psycopg2.connect(dsn, connect_timeout=3)
 
 
 # ---------------------------------------------------------------------------
@@ -148,11 +140,7 @@ def me(request: Request):
 def db_check():
     start = time.monotonic()
     try:
-        conn = _pg_connection()
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1")
-            cur.fetchone()
-        conn.close()
+        check_database_connectivity()
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "reason": str(exc)}
     return {"ok": True, "latencyMs": round((time.monotonic() - start) * 1000, 1)}
