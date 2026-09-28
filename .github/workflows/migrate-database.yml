@@ -58,7 +58,6 @@ jobs:
     name: Alembic migration
     needs: prepare-pg-token
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment_name || 'production' }}
 
     steps:
       - name: Checkout repository
