@@ -25,6 +25,8 @@ import time
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 
+from db import get_database_url
+
 app = FastAPI(title="aks-demo-backend")
 
 # ---------------------------------------------------------------------------
@@ -36,9 +38,6 @@ app = FastAPI(title="aks-demo-backend")
 DEMO_USERNAME = os.environ.get("DEMO_USERNAME", "demo")
 DEMO_PASSWORD_PATH = os.environ.get("DEMO_PASSWORD_PATH", "/mnt/secrets-store/demo-password")
 DEMO_PASSWORD_FALLBACK = os.environ.get("DEMO_PASSWORD", "demo-password-change-me")
-
-DATABASE_URL_PATH = os.environ.get("DATABASE_URL_PATH", "/mnt/secrets-store/database-url")
-DATABASE_URL_FALLBACK = os.environ.get("DATABASE_URL", "")
 
 REDIS_URL_PATH = os.environ.get("REDIS_URL_PATH", "/mnt/secrets-store/redis-url")
 REDIS_URL_FALLBACK = os.environ.get("REDIS_URL", "")
@@ -68,10 +67,7 @@ def _redis_client():
 def _pg_connection():
     import psycopg2  # imported lazily, same reasoning as above
 
-    dsn = _read_secret(DATABASE_URL_PATH, DATABASE_URL_FALLBACK)
-    if not dsn:
-        raise RuntimeError("no Postgres connection info configured")
-    return psycopg2.connect(dsn, connect_timeout=3)
+    return psycopg2.connect(get_database_url(), connect_timeout=3)
 
 
 # ---------------------------------------------------------------------------
