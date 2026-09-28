@@ -83,14 +83,55 @@ jobs:
           echo "User: ${{ vars.PGUSER }}"
           echo "Port: ${{ vars.PGPORT }}"
 
+      - name: Resolve PostgreSQL variables with retry
+        shell: bash
+        env:
+          PGHOST_PRIMARY: ${{ vars.PGHOST }}
+          PGHOST_FALLBACK: ${{ vars.POSTGRES_FQDN }}
+          PGDATABASE_VALUE: ${{ vars.PGDATABASE }}
+          PGUSER_PRIMARY: ${{ vars.PGUSER }}
+          PGUSER_FALLBACK_1: ${{ vars.PGADMIN }}
+          PGUSER_FALLBACK_2: ${{ vars.POSTGRES_ADMIN_USERNAME }}
+          PGPORT_VALUE: ${{ vars.PGPORT }}
+        run: |
+          retries=10
+          sleep_seconds=6
+
+          for attempt in $(seq 1 "$retries"); do
+            resolved_pghost="${PGHOST_PRIMARY:-$PGHOST_FALLBACK}"
+            resolved_pguser="${PGUSER_PRIMARY:-${PGUSER_FALLBACK_1:-$PGUSER_FALLBACK_2}}"
+            resolved_pgdatabase="$PGDATABASE_VALUE"
+            resolved_pgport="${PGPORT_VALUE:-5432}"
+
+            if [[ -n "$resolved_pghost" && -n "$resolved_pguser" && -n "$resolved_pgdatabase" ]]; then
+              echo "PGHOST=$resolved_pghost" >> "$GITHUB_ENV"
+              echo "PGUSER=$resolved_pguser" >> "$GITHUB_ENV"
+              echo "PGDATABASE=$resolved_pgdatabase" >> "$GITHUB_ENV"
+              echo "PGPORT=$resolved_pgport" >> "$GITHUB_ENV"
+              echo "Resolved PostgreSQL variables on attempt $attempt/$retries."
+              break
+            fi
+
+            if [[ "$attempt" -eq "$retries" ]]; then
+              echo "Failed to resolve required PostgreSQL variables after $retries attempts."
+              echo "Resolved PGHOST: ${resolved_pghost:-<missing>}"
+              echo "Resolved PGUSER: ${resolved_pguser:-<missing>}"
+              echo "Resolved PGDATABASE: ${resolved_pgdatabase:-<missing>}"
+              exit 1
+            fi
+
+            echo "Attempt $attempt/$retries: waiting for PostgreSQL variables..."
+            sleep "$sleep_seconds"
+          done
+
       - name: Run Alembic migrations
         working-directory: backend
         env:
           PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
-          PGHOST: ${{ vars.PGHOST }}
-          PGPORT: "5432"
-          PGDATABASE: ${{ vars.PGDATABASE }}
-          PGUSER: ${{ vars.PGUSER }}
+          PGHOST: ${{ env.PGHOST }}
+          PGPORT: ${{ env.PGPORT }}
+          PGDATABASE: ${{ env.PGDATABASE }}
+          PGUSER: ${{ env.PGUSER }}
         run: |
           echo "Checking current migration status..."
           alembic current || echo "No migrations applied yet"
