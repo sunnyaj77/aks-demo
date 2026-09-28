@@ -122,23 +122,12 @@ jobs:
           retries=10
           sleep_seconds=6
 
-          for ((attempt = 1; attempt <= retries; attempt++)); do
-            echo "Checking migration connectivity (attempt $attempt/$retries)..."
-            if python - <<'PY'
-              from sqlalchemy import create_engine, text
-
-              from db import get_database_url
-
-              engine = create_engine(get_database_url())
-              try:
-                  with engine.connect() as connection:
-                      connection.execute(text("SELECT 1"))
-              finally:
-                  engine.dispose()
-          PY
-            then
-              break
-            fi
+                    for ((attempt = 1; attempt <= retries; attempt++)); do
+                      echo "Checking migration connectivity (attempt $attempt/$retries)..."
+                      if python -c "from db import check_database_connectivity; check_database_connectivity()"
+                      then
+                        break
+                      fi
 
             if [[ "$attempt" -eq "$retries" ]]; then
               echo "Unable to connect to PostgreSQL after $retries attempts."

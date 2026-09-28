@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 
 
@@ -98,3 +99,13 @@ def _build_password_url() -> str:
         return "postgresql+psycopg2://" + database_url[len("postgresql://") :]
 
     return database_url
+
+
+def check_database_connectivity() -> None:
+    """Verify the configured PostgreSQL endpoint is reachable."""
+    engine = create_engine(get_database_url())
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    finally:
+        engine.dispose()
