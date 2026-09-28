@@ -8,6 +8,7 @@ on:
         type: string
         default: production
         description: GitHub environment to deploy to
+  workflow_dispatch: 
 
 permissions:
   contents: read
