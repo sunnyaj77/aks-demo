@@ -83,7 +83,7 @@ jobs:
           echo "User: ${{ vars.PGUSER }}"
           echo "Port: ${{ vars.PGPORT }}"
 
-      - name: Resolve PostgreSQL variables with retry
+      - name: Resolve PostgreSQL variables
         shell: bash
         env:
           PGHOST_PRIMARY: ${{ vars.PGHOST }}
@@ -94,35 +94,24 @@ jobs:
           PGUSER_FALLBACK_2: ${{ vars.POSTGRES_ADMIN_USERNAME }}
           PGPORT_VALUE: ${{ vars.PGPORT }}
         run: |
-          retries=10
-          sleep_seconds=6
+          resolved_pghost="${PGHOST_PRIMARY:-$PGHOST_FALLBACK}"
+          resolved_pguser="${PGUSER_PRIMARY:-${PGUSER_FALLBACK_1:-$PGUSER_FALLBACK_2}}"
+          resolved_pgdatabase="$PGDATABASE_VALUE"
+          resolved_pgport="${PGPORT_VALUE:-5432}"
 
-          for attempt in $(seq 1 "$retries"); do
-            resolved_pghost="${PGHOST_PRIMARY:-$PGHOST_FALLBACK}"
-            resolved_pguser="${PGUSER_PRIMARY:-${PGUSER_FALLBACK_1:-$PGUSER_FALLBACK_2}}"
-            resolved_pgdatabase="$PGDATABASE_VALUE"
-            resolved_pgport="${PGPORT_VALUE:-5432}"
+          if [[ -z "$resolved_pghost" || -z "$resolved_pguser" || -z "$resolved_pgdatabase" ]]; then
+            echo "Failed to resolve required PostgreSQL variables."
+            echo "Resolved PGHOST: ${resolved_pghost:-<missing>}"
+            echo "Resolved PGUSER: ${resolved_pguser:-<missing>}"
+            echo "Resolved PGDATABASE: ${resolved_pgdatabase:-<missing>}"
+            exit 1
+          fi
 
-            if [[ -n "$resolved_pghost" && -n "$resolved_pguser" && -n "$resolved_pgdatabase" ]]; then
-              echo "PGHOST=$resolved_pghost" >> "$GITHUB_ENV"
-              echo "PGUSER=$resolved_pguser" >> "$GITHUB_ENV"
-              echo "PGDATABASE=$resolved_pgdatabase" >> "$GITHUB_ENV"
-              echo "PGPORT=$resolved_pgport" >> "$GITHUB_ENV"
-              echo "Resolved PostgreSQL variables on attempt $attempt/$retries."
-              break
-            fi
-
-            if [[ "$attempt" -eq "$retries" ]]; then
-              echo "Failed to resolve required PostgreSQL variables after $retries attempts."
-              echo "Resolved PGHOST: ${resolved_pghost:-<missing>}"
-              echo "Resolved PGUSER: ${resolved_pguser:-<missing>}"
-              echo "Resolved PGDATABASE: ${resolved_pgdatabase:-<missing>}"
-              exit 1
-            fi
-
-            echo "Attempt $attempt/$retries: waiting for PostgreSQL variables..."
-            sleep "$sleep_seconds"
-          done
+          echo "PGHOST=$resolved_pghost" >> "$GITHUB_ENV"
+          echo "PGUSER=$resolved_pguser" >> "$GITHUB_ENV"
+          echo "PGDATABASE=$resolved_pgdatabase" >> "$GITHUB_ENV"
+          echo "PGPORT=$resolved_pgport" >> "$GITHUB_ENV"
+          echo "Resolved PostgreSQL variables."
 
       - name: Run Alembic migrations
         working-directory: backend
@@ -133,8 +122,22 @@ jobs:
           PGDATABASE: ${{ env.PGDATABASE }}
           PGUSER: ${{ env.PGUSER }}
         run: |
-          echo "Checking current migration status..."
-          alembic current || echo "No migrations applied yet"
+          retries=10
+          sleep_seconds=6
+
+          for attempt in $(seq 1 "$retries"); do
+            echo "Checking migration connectivity (attempt $attempt/$retries)..."
+            if alembic current; then
+              break
+            fi
+
+            if [[ "$attempt" -eq "$retries" ]]; then
+              echo "Unable to connect to PostgreSQL after $retries attempts."
+              exit 1
+            fi
+
+            sleep "$sleep_seconds"
+          done
 
           echo "Applying pending migrations..."
           alembic upgrade head
