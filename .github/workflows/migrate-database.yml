@@ -117,6 +117,7 @@ jobs:
         working-directory: backend
         env:
           PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           retries=10
           sleep_seconds=6
