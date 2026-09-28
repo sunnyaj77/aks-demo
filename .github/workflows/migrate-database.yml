@@ -117,10 +117,6 @@ jobs:
         working-directory: backend
         env:
           PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
-          PGHOST: ${{ env.PGHOST }}
-          PGPORT: ${{ env.PGPORT }}
-          PGDATABASE: ${{ env.PGDATABASE }}
-          PGUSER: ${{ env.PGUSER }}
         run: |
           retries=10
           sleep_seconds=6
