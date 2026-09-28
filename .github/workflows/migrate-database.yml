@@ -66,6 +66,8 @@ jobs:
           echo "Database: ${{ vars.PGDATABASE }}"
           echo "User: ${{ vars.PGUSER }}"
           echo "Port: ${{ vars.PGPORT }}"
+        env:
+          PGACCESS_TOKEN: ${{ env.PGACCESS_TOKEN }}
 
       - name: Run Alembic migrations
         working-directory: backend
