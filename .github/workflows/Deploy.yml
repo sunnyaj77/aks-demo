@@ -1,0 +1,44 @@
+name: Deploy application
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  migrate-database:
+    name: Migrate database schema
+    uses: ./.github/workflows/migrate-database.yml
+    with:
+      environment_name: production
+    secrets: inherit
+
+  deploy-aks:
+    name: Deploy application to AKS
+    needs: migrate-database
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Azure with AKS deployment UAMI
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_AKS_DEPLOYMENT_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Example placeholder for Helm deployment
+        run: |
+          echo "Run helm upgrade --install here"
