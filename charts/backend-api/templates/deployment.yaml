@@ -51,6 +51,8 @@ spec:
               value: /mnt/secrets-store/demo-password
             - name: DATABASE_URL_PATH
               value: /mnt/secrets-store/database-url
+            - name: PG_AUTH_MODE
+              value: entra
             - name: REDIS_URL_PATH
               value: /mnt/secrets-store/redis-url
           volumeMounts:

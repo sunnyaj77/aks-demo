@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL, make_url
@@ -26,6 +27,7 @@ DATABASE_URL_PATH = os.environ.get(
 )
 DATABASE_URL_FALLBACK = os.environ.get("DATABASE_URL", "")
 AZURE_POSTGRES_SCOPE = "https://ossrdbms-aad.database.windows.net/.default"
+_ENTRA_CREDENTIALS = None
 
 
 def get_database_url() -> str:
@@ -35,24 +37,13 @@ def get_database_url() -> str:
     if access_token:
         return _build_entra_url(access_token, _resolve_entra_config(required=True))
 
-    if _should_use_entra_auth():
-        entra_config = _resolve_entra_config()
-        if entra_config:
-            return _build_entra_url(_get_entra_access_token(), entra_config)
+    if os.environ.get("PG_AUTH_MODE", "").strip().lower() == "entra":
+        return _build_entra_url(
+            _get_entra_access_token(),
+            _resolve_entra_config(required=True),
+        )
 
     return _build_password_url()
-
-
-def _should_use_entra_auth() -> bool:
-    """Detect when Azure workload identity or managed identity is available."""
-    return any(
-        os.environ.get(name)
-        for name in (
-            "AZURE_FEDERATED_TOKEN_FILE",
-            "IDENTITY_ENDPOINT",
-            "MSI_ENDPOINT",
-        )
-    )
 
 
 def _resolve_entra_config(required: bool = False) -> dict[str, str | int] | None:
@@ -89,13 +80,55 @@ def _resolve_entra_config(required: bool = False) -> dict[str, str | int] | None
 
 def _get_entra_access_token() -> str:
     """Fetch a PostgreSQL access token using the pod's Azure identity."""
-    from azure.identity import DefaultAzureCredential
+    from azure.core.exceptions import ClientAuthenticationError
+    from azure.identity import CredentialUnavailableError
 
-    credential = DefaultAzureCredential()
-    try:
-        return credential.get_token(AZURE_POSTGRES_SCOPE).token
-    finally:
-        credential.close()
+    errors = []
+    saw_authentication_failure = False
+    for credential in _get_entra_credentials():
+        try:
+            return credential.get_token(AZURE_POSTGRES_SCOPE).token
+        except CredentialUnavailableError as exc:
+            errors.append(exc.message)
+        except ClientAuthenticationError as exc:
+            saw_authentication_failure = True
+            errors.append(str(exc))
+            continue
+
+    message = (
+        "; ".join(errors)
+        or "No Azure workload identity or managed identity credential is available."
+    )
+    if saw_authentication_failure:
+        raise ClientAuthenticationError(message=message)
+
+    raise CredentialUnavailableError(message=message)
+
+
+def _get_entra_credentials() -> tuple[Any, ...]:
+    """Create the Azure credentials lazily so they can be reused."""
+    global _ENTRA_CREDENTIALS
+
+    if _ENTRA_CREDENTIALS is None:
+        from azure.identity import ManagedIdentityCredential, WorkloadIdentityCredential
+
+        credentials = []
+        if all(
+            os.environ.get(name)
+            for name in (
+                "AZURE_FEDERATED_TOKEN_FILE",
+                "AZURE_CLIENT_ID",
+                "AZURE_TENANT_ID",
+            )
+        ):
+            credentials.append(WorkloadIdentityCredential())
+
+        credentials.append(
+            ManagedIdentityCredential(client_id=os.environ.get("AZURE_CLIENT_ID"))
+        )
+        _ENTRA_CREDENTIALS = tuple(credentials)
+
+    return _ENTRA_CREDENTIALS
 
 
 def _build_entra_url(
