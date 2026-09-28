@@ -61,21 +61,21 @@ jobs:
 
       - name: Show migration info
         run: |
-          echo "PostgreSQL Server: ${{ vars.PGHOST }}"
-          echo "Database: ${{ vars.PGDATABASE }}"
-          echo "User: ${{ vars.PGUSER }}"
-          echo "Port: ${{ vars.PGPORT }}"
+          echo "PostgreSQL Server: ${{ secrets.PGHOST }}"
+          echo "Database: ${{ secrets.PGDATABASE }}"
+          echo "User: ${{ secrets.PGUSER }}"
+          echo "Port: ${{ secrets.PGPORT }}"
 
       - name: Resolve PostgreSQL variables
         shell: bash
         env:
-          PGHOST_PRIMARY: ${{ vars.PGHOST }}
+          PGHOST_PRIMARY: ${{ secrets.PGHOST }}
           PGHOST_FALLBACK: ${{ vars.POSTGRES_FQDN }}
-          PGDATABASE_VALUE: ${{ vars.PGDATABASE }}
-          PGUSER_PRIMARY: ${{ vars.PGUSER }}
+          PGDATABASE_VALUE: ${{ secrets.PGDATABASE }}
+          PGUSER_PRIMARY: ${{ secrets.PGUSER }}
           PGUSER_FALLBACK_1: ${{ vars.PGADMIN }}
           PGUSER_FALLBACK_2: ${{ vars.POSTGRES_ADMIN_USERNAME }}
-          PGPORT_VALUE: ${{ vars.PGPORT }}
+          PGPORT_VALUE: ${{ secrets.PGPORT }}
         run: |
           resolved_pghost="${PGHOST_PRIMARY:-$PGHOST_FALLBACK}"
           resolved_pguser="${PGUSER_PRIMARY:-${PGUSER_FALLBACK_1:-$PGUSER_FALLBACK_2}}"
