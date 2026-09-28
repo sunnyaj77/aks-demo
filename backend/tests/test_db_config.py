@@ -59,7 +59,7 @@ class DatabaseConfigTests(unittest.TestCase):
 
     def test_reads_and_normalizes_database_url_from_secret_file(self):
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False) as secret_file:
-            secret_file.write("******localhost:5432/appdb\n")
+            secret_file.write("postgres://localhost:5432/appdb\n")
             secret_path = secret_file.name
 
         self.addCleanup(lambda: Path(secret_path).unlink(missing_ok=True))
@@ -69,7 +69,7 @@ class DatabaseConfigTests(unittest.TestCase):
 
         self.assertEqual(
             db.get_database_url(),
-            "******localhost:5432/appdb",
+            "postgresql+psycopg2://localhost:5432/appdb",
         )
 
     def test_raises_helpful_error_when_no_database_configuration_exists(self):
