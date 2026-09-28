@@ -123,7 +123,7 @@ jobs:
 
           for ((attempt = 1; attempt <= retries; attempt++)); do
             echo "Checking migration connectivity (attempt $attempt/$retries)..."
-            if python -c $'from sqlalchemy import create_engine, text\n\nfrom db import get_database_url\n\nengine = create_engine(get_database_url())\nwith engine.connect() as connection:\n    connection.execute(text("SELECT 1"))'
+            if python -c $'from sqlalchemy import create_engine, text\n\nfrom db import get_database_url\n\nengine = create_engine(get_database_url())\ntry:\n    with engine.connect() as connection:\n        connection.execute(text("SELECT 1"))\nfinally:\n    engine.dispose()'
             then
               break
             fi
