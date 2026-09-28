@@ -127,7 +127,8 @@ jobs:
 
           for attempt in $(seq 1 "$retries"); do
             echo "Checking migration connectivity (attempt $attempt/$retries)..."
-            if alembic current; then
+            if python -c 'from sqlalchemy import create_engine, text; from db import get_database_url; engine = create_engine(get_database_url()); connection = engine.connect(); connection.execute(text("SELECT 1")); connection.close()'
+            then
               break
             fi
 
@@ -138,6 +139,9 @@ jobs:
 
             sleep "$sleep_seconds"
           done
+
+          echo "Checking current migration status..."
+          alembic current || echo "No migrations applied yet"
 
           echo "Applying pending migrations..."
           alembic upgrade head
