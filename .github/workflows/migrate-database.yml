@@ -1,0 +1,91 @@
+name: Migrate PostgreSQL schema
+
+on:
+  workflow_call:
+    inputs:
+      environment_name:
+        required: false
+        type: string
+        default: production
+        description: GitHub environment to deploy to
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  migrate-database:
+    name: Alembic migration
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+        working-directory: backend
+
+      - name: Login to Azure with UAMI
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get PostgreSQL Entra access token
+        shell: bash
+        run: |
+          token="$(az account get-access-token \
+            --resource-type oss-rdbms \
+            --query accessToken \
+            --output tsv)"
+
+          echo "PGACCESS_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Show migration info
+        run: |
+          echo "PostgreSQL Server: ${{ vars.PGHOST }}"
+          echo "Database: ${{ vars.PGDATABASE }}"
+          echo "User: ${{ vars.PGUSER }}"
+          echo "Port: ${{ vars.PGPORT }}"
+
+      - name: Run Alembic migrations
+        working-directory: backend
+        env:
+          PGHOST: ${{ vars.PGHOST }}
+          PGPORT: "5432"
+          PGDATABASE: ${{ vars.PGDATABASE }}
+          PGUSER: ${{ vars.PGUSER }}
+        run: |
+          echo "Checking current migration status..."
+          alembic current || echo "No migrations applied yet"
+
+          echo "Applying pending migrations..."
+          alembic upgrade head
+
+          echo "Current migration status:"
+          alembic current
+
+      - name: Migration success
+        if: success()
+        run: |
+          echo "✅ Database migration completed successfully"
+          echo "All pending schema changes have been applied to PostgreSQL."
+
+      - name: Migration failure
+        if: failure()
+        run: |
+          echo "❌ Database migration failed"
+          echo "Review logs above for error details."
+          exit 1
