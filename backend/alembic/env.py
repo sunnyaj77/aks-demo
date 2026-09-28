@@ -1,14 +1,16 @@
-"""Alembic migration environment configuration.
-
-Handles both Microsoft Entra and password-based PostgreSQL authentication.
-The connection URL is built dynamically at runtime from environment variables.
-"""
+"""Alembic migration environment configuration."""
 from __future__ import annotations
+
+import sys
+from pathlib import Path
 
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+# Add backend directory to Python path so imports work
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from db import get_database_url
 from models import Base
@@ -44,11 +46,8 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations using a live PostgreSQL connection.
+    """Run migrations using a live PostgreSQL connection."""
 
-    The connection URL is constructed from environment variables at runtime.
-    For Entra auth, the PGACCESS_TOKEN is used as the password.
-    """
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = get_database_url()
 
