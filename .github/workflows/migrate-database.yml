@@ -14,6 +14,13 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  ARM_CLIENT_ID:       ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID:       ${{ secrets.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_USE_OIDC:        "true"
+  ARM_ACCESS_KEY:      ${{ secrets.TFSTATE_ACCESS_KEY }}
+
 jobs:
   migrate-database:
     name: Alembic migration
@@ -39,9 +46,9 @@ jobs:
       - name: Login to Azure with UAMI
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{  secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get PostgreSQL Entra access token
         shell: bash
