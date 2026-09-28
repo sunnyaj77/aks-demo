@@ -101,9 +101,9 @@ jobs:
 
           if [[ -z "$resolved_pghost" || -z "$resolved_pguser" || -z "$resolved_pgdatabase" ]]; then
             echo "Failed to resolve required PostgreSQL variables."
-            echo "Resolved PGHOST: ${resolved_pghost:-<missing>}"
-            echo "Resolved PGUSER: ${resolved_pguser:-<missing>}"
-            echo "Resolved PGDATABASE: ${resolved_pgdatabase:-<missing>}"
+            [[ -z "$resolved_pghost" ]] && echo "Missing PGHOST/POSTGRES_FQDN variable."
+            [[ -z "$resolved_pguser" ]] && echo "Missing PGUSER/PGADMIN/POSTGRES_ADMIN_USERNAME variable."
+            [[ -z "$resolved_pgdatabase" ]] && echo "Missing PGDATABASE variable."
             exit 1
           fi
 
