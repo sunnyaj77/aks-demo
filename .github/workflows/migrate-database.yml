@@ -28,13 +28,15 @@ env:
   ARM_ACCESS_KEY:      ${{ secrets.TFSTATE_ACCESS_KEY }}
 
 jobs:
-  prepare-pg-token:
-    name: Get PostgreSQL access token
+  migrate-database:
+    name: Alembic migration
     runs-on: ubuntu-latest
-    outputs:
-      pgaccess_token: ${{ steps.fetch-token.outputs.pgaccess_token }}
+    environment: ${{ inputs.environment_name || 'production' }}
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Login to Azure with UAMI
         uses: azure/login@v2
         with:
@@ -43,26 +45,27 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get PostgreSQL Entra access token
-        id: fetch-token
         shell: bash
         run: |
-          token="$(az account get-access-token \
+          set -euo pipefail
+
+          if ! token="$(az account get-access-token \
             --resource-type oss-rdbms \
             --query accessToken \
             --output tsv)"
+          then
+            echo "::error::Failed to acquire PostgreSQL Entra token via Azure CLI (resource-type: oss-rdbms). Check Azure OIDC login and PostgreSQL Entra permissions."
+            exit 1
+          fi
+
+          token="${token//$'\r'/}"
+          if [[ -z "${token//[[:space:]]/}" || "$token" == "null" ]]; then
+            echo "::error::Azure CLI returned an empty PostgreSQL Entra token. Verify AZURE_CLIENT_ID/AZURE_TENANT_ID/AZURE_SUBSCRIPTION_ID and PostgreSQL Entra access for this identity."
+            exit 1
+          fi
 
           echo "::add-mask::$token"
-          echo "pgaccess_token=$token" >> "$GITHUB_OUTPUT"
-
-  migrate-database:
-    name: Alembic migration
-    needs: prepare-pg-token
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment_name || 'production' }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+          echo "PGACCESS_TOKEN=$token" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -116,9 +119,13 @@ jobs:
       - name: Run Alembic migrations
         working-directory: backend
         env:
-          PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
+          if [[ -z "${PGACCESS_TOKEN:-}" ]]; then
+            echo "PGACCESS_TOKEN was not set for migration step."
+            exit 1
+          fi
+
           retries=10
           sleep_seconds=6
 

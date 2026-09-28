@@ -32,8 +32,13 @@ def get_database_url() -> str:
     Otherwise, falls back to DATABASE_URL for local/password authentication.
     """
     access_token = os.environ.get("PGACCESS_TOKEN")
-
-    if access_token:
+    if access_token is not None:
+        access_token = access_token.strip()
+        if not access_token:
+            raise RuntimeError(
+                "PGACCESS_TOKEN is set but empty. "
+                "Verify token acquisition and environment propagation."
+            )
         return _build_entra_url(access_token)
 
     return _build_password_url()
@@ -88,8 +93,9 @@ def _build_password_url() -> str:
     if not database_url:
         raise RuntimeError(
             "No database configuration found. "
-            "Set either DATABASE_URL or PGACCESS_TOKEN with PGHOST, PGUSER, "
-            "and PGDATABASE."
+            f"Checked DATABASE_URL_PATH ({DATABASE_URL_PATH}) and DATABASE_URL. "
+            "Set either DATABASE_URL or a non-empty PGACCESS_TOKEN with "
+            "PGHOST, PGUSER, and PGDATABASE."
         )
 
     if database_url.startswith("postgres://"):
