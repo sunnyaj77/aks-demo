@@ -83,15 +83,60 @@ jobs:
           echo "User: ${{ vars.PGUSER }}"
           echo "Port: ${{ vars.PGPORT }}"
 
+      - name: Resolve PostgreSQL variables
+        shell: bash
+        env:
+          PGHOST_PRIMARY: ${{ vars.PGHOST }}
+          PGHOST_FALLBACK: ${{ vars.POSTGRES_FQDN }}
+          PGDATABASE_VALUE: ${{ vars.PGDATABASE }}
+          PGUSER_PRIMARY: ${{ vars.PGUSER }}
+          PGUSER_FALLBACK_1: ${{ vars.PGADMIN }}
+          PGUSER_FALLBACK_2: ${{ vars.POSTGRES_ADMIN_USERNAME }}
+          PGPORT_VALUE: ${{ vars.PGPORT }}
+        run: |
+          resolved_pghost="${PGHOST_PRIMARY:-$PGHOST_FALLBACK}"
+          resolved_pguser="${PGUSER_PRIMARY:-${PGUSER_FALLBACK_1:-$PGUSER_FALLBACK_2}}"
+          resolved_pgdatabase="$PGDATABASE_VALUE"
+          resolved_pgport="${PGPORT_VALUE:-5432}"
+
+          if [[ -z "$resolved_pghost" || -z "$resolved_pguser" || -z "$resolved_pgdatabase" ]]; then
+            echo "Failed to resolve required PostgreSQL variables."
+            [[ -z "$resolved_pghost" ]] && echo "Missing PGHOST/POSTGRES_FQDN variable."
+            [[ -z "$resolved_pguser" ]] && echo "Missing PGUSER/PGADMIN/POSTGRES_ADMIN_USERNAME variable."
+            [[ -z "$resolved_pgdatabase" ]] && echo "Missing PGDATABASE variable."
+            exit 1
+          fi
+
+          echo "PGHOST=$resolved_pghost" >> "$GITHUB_ENV"
+          echo "PGUSER=$resolved_pguser" >> "$GITHUB_ENV"
+          echo "PGDATABASE=$resolved_pgdatabase" >> "$GITHUB_ENV"
+          echo "PGPORT=$resolved_pgport" >> "$GITHUB_ENV"
+          echo "Resolved PostgreSQL variables."
+
       - name: Run Alembic migrations
         working-directory: backend
         env:
           PGACCESS_TOKEN: ${{ needs.prepare-pg-token.outputs.pgaccess_token }}
-          PGHOST: ${{ vars.PGHOST }}
-          PGPORT: "5432"
-          PGDATABASE: ${{ vars.PGDATABASE }}
-          PGUSER: ${{ vars.PGUSER }}
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
+          retries=10
+          sleep_seconds=6
+
+          for ((attempt = 1; attempt <= retries; attempt++)); do
+            echo "Checking migration connectivity (attempt $attempt/$retries)..."
+            if python -c "from db import check_database_connectivity; check_database_connectivity()"
+            then
+              break
+            fi
+
+            if [[ "$attempt" -eq "$retries" ]]; then
+              echo "Unable to connect to PostgreSQL after $retries attempts."
+              exit 1
+            fi
+
+            sleep "$sleep_seconds"
+          done
+
           echo "Checking current migration status..."
           alembic current || echo "No migrations applied yet"
 
