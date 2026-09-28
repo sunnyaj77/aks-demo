@@ -93,7 +93,7 @@ def _build_password_url() -> str:
     if not database_url:
         raise RuntimeError(
             "No database configuration found. "
-            f"Checked DATABASE_URL_PATH ({DATABASE_URL_PATH}) and DATABASE_URL. "
+            "Checked DATABASE_URL_PATH and DATABASE_URL. "
             "Set either DATABASE_URL or a non-empty PGACCESS_TOKEN with "
             "PGHOST, PGUSER, and PGDATABASE."
         )
