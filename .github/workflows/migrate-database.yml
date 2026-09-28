@@ -9,12 +9,6 @@ on:
         default: production
         description: GitHub environment to deploy to
   workflow_dispatch:
-    inputs:
-      environment_name:
-        required: false
-        type: string
-        default: production
-        description: GitHub environment to deploy to
 
 permissions:
   contents: read
