@@ -1,0 +1,5 @@
+<!-- Sec team: replace this section with inbound authentication/authorization
+     and rate-limiting policies before enabling them for the Dev API. -->
+<inbound>
+  <base />
+</inbound>
