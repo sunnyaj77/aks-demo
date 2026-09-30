@@ -1,0 +1,4 @@
+<outbound>
+  <base />
+  <!-- TODO: Add response transformation policies here, such as set-body or set-header. -->
+</outbound>

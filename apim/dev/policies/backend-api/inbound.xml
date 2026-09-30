@@ -1,0 +1,6 @@
+<inbound>
+  <base />
+  <!-- TODO: Add the API's authentication and authorization policy here. -->
+  <!-- Example: validate-jwt with the correct issuer, audience, and required claims. -->
+  <!-- TODO: Add rate limiting, for example rate-limit-by-key with an appropriate key and quota. -->
+</inbound>

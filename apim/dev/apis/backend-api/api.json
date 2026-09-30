@@ -1,0 +1,79 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "aks-demo backend API",
+    "version": "1.0.0",
+    "description": "Replace or extend this OpenAPI document to match the backend API."
+  },
+  "servers": [
+    {
+      "url": "https://replace-with-backend-url"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Backend health check",
+        "responses": {
+          "200": {
+            "description": "Backend is healthy"
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "Create a demo session",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Session created" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "getCurrentUser",
+        "summary": "Resolve the current session",
+        "responses": {
+          "200": { "description": "Session is valid" },
+          "401": { "description": "Session is missing or invalid" }
+        }
+      }
+    },
+    "/api/db-check": {
+      "get": {
+        "operationId": "checkDatabase",
+        "summary": "Check backend database connectivity",
+        "responses": {
+          "200": { "description": "Database connectivity result" }
+        }
+      }
+    },
+    "/api/cache-check": {
+      "get": {
+        "operationId": "checkCache",
+        "summary": "Check backend cache connectivity",
+        "responses": {
+          "200": { "description": "Cache connectivity result" }
+        }
+      }
+    }
+  }
+}
