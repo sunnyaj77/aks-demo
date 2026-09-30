@@ -1,0 +1,8 @@
+<backend>
+  <base />
+  <!-- TODO: Add API-specific backend routing or retry logic here. -->
+  <!-- The backend URL is set during API import from the APIM_BACKEND_URL variable. -->
+  <!-- Example override, if a {{backend-url}} APIM Named value has been configured:
+  <set-backend-service base-url="{{backend-url}}" />
+  -->
+</backend>

@@ -1,0 +1,86 @@
+name: Deploy APIM Dev
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apim/dev/**"
+      - ".github/workflows/deploy-apim-dev.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: Import API and apply policies
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      APIM_RESOURCE_GROUP: ${{ vars.APIM_RESOURCE_GROUP }}
+      APIM_SERVICE_NAME: ${{ vars.APIM_SERVICE_NAME }}
+      APIM_API_ID: ${{ vars.APIM_API_ID }}
+      APIM_API_PATH: ${{ vars.APIM_API_PATH }}
+      APIM_API_DISPLAY_NAME: ${{ vars.APIM_API_DISPLAY_NAME }}
+      APIM_BACKEND_URL: ${{ vars.APIM_BACKEND_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in APIM_RESOURCE_GROUP APIM_SERVICE_NAME APIM_API_ID APIM_API_PATH APIM_API_DISPLAY_NAME APIM_BACKEND_URL; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required GitHub Actions variable: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Import backend API and deploy policies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api_dir="apim/dev/apis/backend-api"
+          policy_dir="apim/dev/policies/backend-api"
+
+          az apim api import \
+            --resource-group "$APIM_RESOURCE_GROUP" \
+            --service-name "$APIM_SERVICE_NAME" \
+            --api-id "$APIM_API_ID" \
+            --path "$APIM_API_PATH" \
+            --display-name "$APIM_API_DISPLAY_NAME" \
+            --specification-format OpenApiJson \
+            --specification-path "$api_dir/api.json" \
+            --service-url "$APIM_BACKEND_URL"
+
+          api_resource_id="$(az apim api show \
+            --resource-group "$APIM_RESOURCE_GROUP" \
+            --service-name "$APIM_SERVICE_NAME" \
+            --api-id "$APIM_API_ID" \
+            --query id \
+            --output tsv)"
+
+          policy_xml="$(
+            printf '<policies>\n'
+            cat "$policy_dir/inbound.xml" "$policy_dir/backend.xml" "$policy_dir/outbound.xml"
+            printf '</policies>\n'
+          )"
+          policy_body="$(printf '%s' "$policy_xml" | python -c \
+            'import json, sys; print(json.dumps({"properties": {"format": "rawxml", "value": sys.stdin.read()}}))')"
+          az rest \
+            --method put \
+            --url "https://management.azure.com${api_resource_id}/policies/policy?api-version=2022-08-01" \
+            --headers Content-Type=application/json \
+            --body "$policy_body"
