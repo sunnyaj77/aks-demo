@@ -1,0 +1,5 @@
+<!-- Sec/Dev teams: replace this section with the routing policy for the
+     backend URL defined in openai.yaml. -->
+<backend>
+  <base />
+</backend>

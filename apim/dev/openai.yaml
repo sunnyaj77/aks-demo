@@ -1,0 +1,15 @@
+# Dev team: replace this sample with the OpenAPI document for the Dev backend.
+# The deployment workflow intentionally rejects this placeholder server URL.
+openapi: 3.0.1
+info:
+  title: backend-api
+  version: "1.0.0"
+servers:
+  - url: https://replace-with-backend-host
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: Health check response
