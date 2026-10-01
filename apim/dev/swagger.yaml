@@ -1,4 +1,4 @@
-# Dev team: replace this sample with the OpenAPI document for the Dev backend.
+# Dev team: replace this sample with the Swagger/OpenAPI document for the Dev backend.
 # The deployment workflow intentionally rejects this placeholder server URL.
 openapi: 3.0.1
 info:
