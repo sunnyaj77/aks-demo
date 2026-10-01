@@ -1,9 +1,11 @@
 # APIM Dev artifacts
 
-The `deploy-apim-dev.yml` workflow imports `openai.yaml` into the existing Dev
-APIM service as API ID/path `backend-api`, then applies the available policy
-sections. Replace the sample OpenAPI document with the Dev team's actual
-definition; the workflow fails until its sample backend URL is removed.
+The `deploy-apim-dev.yml` workflow imports a Swagger/OpenAPI definition into the
+existing Dev APIM service as API ID/path `backend-api`, then applies the
+available policy sections. On manual runs, set `specification_path` to the
+definition's path in the checked-out repository; it defaults to
+`apim/dev/swagger.yaml`. The workflow fails until the sample backend URL is
+replaced with the Dev backend URL.
 
 The Sec team can replace the XML section placeholders under
 `policies/backend-api/` with the inbound authentication/authorization and

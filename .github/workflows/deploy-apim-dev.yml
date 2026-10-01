@@ -8,6 +8,12 @@ on:
       - "apim/dev/**"
       - ".github/workflows/deploy-apim-dev.yml"
   workflow_dispatch:
+    inputs:
+      specification_path:
+        description: Path to the Swagger/OpenAPI definition in the checked-out repository
+        required: false
+        default: apim/dev/swagger.yaml
+        type: string
 
 permissions:
   contents: read
@@ -23,6 +29,7 @@ jobs:
       APIM_SERVICE_NAME: ${{ vars.APIM_SERVICE_NAME }}
       APIM_API_ID: backend-api
       APIM_API_PATH: backend-api
+      APIM_SPECIFICATION_PATH: ${{ inputs.specification_path || 'apim/dev/swagger.yaml' }}
 
     steps:
       - name: Checkout repository
@@ -43,12 +50,12 @@ jobs:
             echo "::error::Set the APIM_SERVICE_NAME variable in the GitHub dev environment."
             exit 1
           fi
-          if [[ ! -s apim/dev/openai.yaml ]]; then
-            echo "::error::Required API definition apim/dev/openai.yaml is missing or empty."
+          if [[ ! -s "$APIM_SPECIFICATION_PATH" ]]; then
+            echo "::error::Swagger/OpenAPI definition '$APIM_SPECIFICATION_PATH' is missing or empty."
             exit 1
           fi
-          if grep -Fq "replace-with-backend-host" apim/dev/openai.yaml; then
-            echo "::error::Replace the sample server URL in apim/dev/openai.yaml with the Dev backend URL."
+          if grep -Fq "replace-with-backend-host" "$APIM_SPECIFICATION_PATH"; then
+            echo "::error::Replace the sample server URL in '$APIM_SPECIFICATION_PATH' with the Dev backend URL."
             exit 1
           fi
 
@@ -67,7 +74,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Import or update API from openai.yaml
+      - name: Import or update API from Swagger/OpenAPI definition
         run: |
           az apim api import \
             --resource-group "$APIM_RESOURCE_GROUP" \
@@ -75,7 +82,7 @@ jobs:
             --api-id "$APIM_API_ID" \
             --path "$APIM_API_PATH" \
             --specification-format OpenApi \
-            --specification-path apim/dev/openai.yaml
+            --specification-path "$APIM_SPECIFICATION_PATH"
 
       # APIM accepts one complete policy document per API. Assemble the
       # separately maintained XML sections so applying one does not replace
